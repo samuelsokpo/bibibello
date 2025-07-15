@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibi Bello - Content Strategy Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Earthy Dark Tones (Slate-900, Slate-800, Rose-300, Stone-300) -->
+    <!-- Application Structure Plan: The SPA is a dashboard centered around an interactive content calendar. A left-hand panel provides filters for content type and content pillars, allowing for thematic exploration. Clicking on any calendar day reveals a modal with the full, detailed content (scripts for Reels/Videos, slide content for Carousels), including visual notes and audio cues. This structure enables users to easily navigate the content plan chronologically and thematically, facilitating content creation and strategic oversight. -->
+    <!-- Visualization & Content Choices: 
+    - Report Info: Bibi Bello's 30-day content calendar. Goal: Make content plan easily explorable and actionable for production.
+    - Viz/Presentation 1: Interactive Calendar Grid (HTML/Tailwind/JS). Interaction: Click to view details, hover for subtle highlight. Justification: Intuitive for a schedule-based plan.
+    - Viz/Presentation 2: Detail Modal (HTML/Tailwind/JS). Interaction: Display full content, copy hashtags. Justification: Provides comprehensive details for each piece of content in a focused view.
+    - Library/Method: Vanilla JS for dynamic content and interactivity, Tailwind CSS for responsive and thematic styling. Chart.js is omitted as quantitative content analysis is not a primary goal for this specific content strategy dashboard, aligning with the minimalist vibe. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
+        }
+        .calendar-day {
+            min-height: 120px;
+            transition: all 0.2s ease-in-out;
+            background-color: #1e293b; /* slate-800 */
+            border-color: #334155; /* slate-700 */
+        }
+        .calendar-day.highlight {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px #fbcfe8; /* rose-300 */
+            z-index: 10;
+        }
+        .filter-btn {
+            background-color: #334155; /* slate-700 */
+            color: #e2e8f0; /* slate-200 */
+            border-color: #475569; /* slate-600 */
+        }
+        .filter-btn-active {
+            background-color: #f472b6; /* rose-400 */
+            color: #1e293b; /* slate-800 */
+            border-color: #f472b6;
+        }
+        .filter-btn:hover {
+            background-color: #475569; /* slate-600 */
+        }
+        .filter-btn-active:hover {
+            background-color: #ec4899; /* rose-500 */
+        }
+        .modal-slide {
+            border-left: 3px solid #f472b6; /* rose-400 */
+        }
+        #modal-content {
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            border-color: #334155; /* slate-700 */
+        }
+        #modal-day, #modal-title {
+            color: #fbcfe8; /* rose-300 */
+        }
+        #modal-hashtags {
+            background-color: #334155; /* slate-700 */
+            color: #cbd5e1; /* slate-300 */
+        }
+        #copy-hashtags-btn {
+            background-color: #f472b6; /* rose-400 */
+            color: #1e293b; /* slate-800 */
+        }
+        #copy-hashtags-btn:hover {
+            background-color: #ec4899; /* rose-500 */
+        }
+        .text-sky-900 { color: #fbcfe8; /* rose-300 */ } /* Adjusting header color for dark theme */
+        .text-slate-600 { color: #94a3b8; /* slate-400 */ } /* Adjusting secondary text color */
+        .text-sky-800 { color: #fbcfe8; /* rose-300 */ } /* Adjusting sub-header color */
+        .text-sky-700 { color: #fbcfe8; /* rose-300 */ } /* Adjusting pillar tag color */
+        .bg-sky-100 { background-color: #334155; /* slate-700 */ } /* Adjusting pillar tag background */
+        .text-green-600 { color: #84cc16; } /* Standard green for feedback */
+        .chart-container {
+            display: none; /* Hiding the chart container as it's not used for this specific content */
+        }
+    </style>
+</head>
+<body class="text-slate-200">
+
+    <div id="app" class="p-4 md:p-8 max-w-screen-2xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-5xl font-bold text-rose-300">Bibi Bello Content Strategy Dashboard</h1>
+            <p class="text-lg text-slate-400 mt-2">Your 30-day plan for spiritual growth, music, and authenticity.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Left Panel: Controls & Analysis -->
+            <aside class="lg:w-1/3 xl:w-1/4 bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 self-start sticky top-8">
+                <h2 class="text-2xl font-bold mb-4 text-rose-300">Strategic Overview</h2>
+                <p class="text-slate-400 mb-6 text-sm">Explore Bibi's content calendar by type or pillar. Click any day to reveal full content details and scripts.</p>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-semibold mb-3 text-rose-300">Filter by Content Type</h3>
+                        <div id="type-filters" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-3 text-rose-300">Filter by Content Pillar</h3>
+                        <div id="pillar-filters" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700 hidden">
+                    <h3 class="font-semibold mb-3 text-center text-rose-300">Content Type Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Calendar -->
+            <main class="lg:w-2/3 xl:w-3/4">
+                 <div class="bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700">
+                    <div class="grid grid-cols-7 gap-1 text-center font-semibold text-sm text-slate-400 mb-2">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center p-4 z-50 transition-opacity duration-300">
+        <div id="modal-content" class="w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-start">
+                <div>
+                    <p id="modal-day" class="text-sm font-bold text-rose-300"></p>
+                    <h2 id="modal-title" class="text-2xl font-bold text-slate-200 leading-tight"></h2>
+                </div>
+                <button id="close-modal-btn" class="text-3xl text-slate-400 hover:text-slate-200">&times;</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto">
+                <div id="modal-copy" class="space-y-4"></div>
+                <div class="mt-6">
+                    <h3 class="font-semibold mb-3 text-lg text-rose-300">Hashtags</h3>
+                    <div class="flex items-center gap-3">
+                         <p id="modal-hashtags" class="text-sm text-slate-300 bg-slate-700 p-3 rounded-lg flex-grow"></p>
+                         <button id="copy-hashtags-btn" class="bg-rose-400 text-slate-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-500 transition-colors whitespace-nowrap">Copy Tags</button>
+                    </div>
+                    <div id="copy-feedback" class="text-center pt-2 text-sm font-medium text-green-600 opacity-0 transition-opacity">Copied!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const contentData = [
+                { day: 1, type: "Video", hook: "Bible Briefs Ep. 1: What It Really Means to Wait on God", copy: `<p><strong>Creative Direction:</strong> Soft-spoken, reflective Bible study. Bibi sits in a cozy, natural setting (e.g., by a window with soft light, or on a couch with warm throws). Gentle, sincere tone. Focus on inviting the audience into a deeper understanding of active waiting.</p><p><strong>Hook:</strong> "Waiting on God? It's not what you think. It's deeper. It's more active. Let's talk about it."</p>` },
+                { day: 3, type: "Carousel", hook: "Things I’ve Learned #1: When You Don’t Feel Like Praying", copy: `<p><strong>Slide 1: "Things I’ve Learned #1: When You Don’t Feel Like Praying"</strong><br>Visual: Minimalist text overlay on a soft, aesthetic image (e.g., a quiet corner of a room with a single candle, or a blurred natural light window). Elegant serif font.</p><p><strong>Slide 2: "It's Okay to Be Honest with God."</strong><br>Visual: Simple illustration of hands open, or a single tear. Text: He already knows your heart. Tell Him you're tired, you're numb, you're struggling. Authenticity deepens intimacy, not diminishes it.</p><p><strong>Slide 3: "Prayer Isn't Always About Words."</strong><br>Visual: Image of someone sitting quietly, or looking out. Text: Sometimes, prayer is simply sitting in His presence. It's listening. It's a sigh. It's just 'being' with Him. He understands the language of your spirit.</p><p><strong>Slide 4: "Lean on the Prayers of Others."</strong><br>Visual: Hands clasped in prayer, or a small group. Text: The body of Christ is there for a reason. Ask a trusted friend or family member to pray for you. Their faith can carry you when yours feels weak.</p><p><strong>Slide 5: "Revisit Simple Gratitude."</strong><br>Visual: A single flower, or a warm cup of tea. Text: Even on the hardest days, there's always something to be grateful for. Start there. A simple 'thank you, God' can shift your heart.</p><p><strong>Slide 6: "Consistency Over Intensity."</strong><br>Visual: A gentle, consistent rhythm (e.g., dripping water, soft waves). Text: A short, honest prayer is more powerful than a long, forced one. Show up, even if it's just for five minutes. He values your presence, not your performance.</p><p><strong>Slide 7: "You are not alone in this. Your faith journey is real, and so is His grace. Keep showing up, even when it's hard. #WhenFaithGetsHard #PrayerLife #ChristianWoman #SpiritualGrowth #BibiBello"</strong></p>` },
+                { day: 6, type: "Video", hook: "Gospel Cover: Hillsong's 'Oceans' on the grass at golden hour. Pure worship.", copy: `<p><strong>Creative Direction:</strong> Calm, heartfelt worship cover. Bibi sits on a soft blanket on a grass field at golden hour, acoustic guitar or simple mic setup. Focus on raw vocal and emotional delivery. Natural light, soft shadows.</p><p><strong>Hook:</strong> "Lose yourself in His presence. 'Oceans' at golden hour. Pure worship."</p>` },
+                { day: 8, type: "Video", hook: "My Quiet Sunday: Church, Journaling, Peace. Come along.", copy: `<p><strong>Creative Direction:</strong> A peaceful, productive Sunday vlog. Focus on quiet moments, natural lighting, and authentic routines. Minimal talking, more soft voiceover/music to create an intimate, observational feel.</p><p><strong>Hook:</strong> "My Sunday reset. Church, journaling, and finding peace. Come along."</p>` },
+                { day: 10, type: "Carousel", hook: "Aesthetic Reflection #1: God is in the stillness.", copy: `<p><strong>Slide 1: "Aesthetic Reflection #1: God is in the stillness."</strong><br>Visual: Beautiful, minimalist shot of Bibi's study nook – a warm mug, an open Bible, a small plant, soft light. Text overlay in an elegant serif font.</p><p><strong>Slide 2: "In the quiet moments, His voice is clearest."</strong><br>Visual: Closeup of a journal with a handwritten note: "Be still, and know that I am God." Text: When the world gets loud, intentional stillness becomes our sanctuary. It's where we truly hear Him.</p><p><strong>Slide 3: "Finding peace in the pause."</strong><br>Visual: Soft focus shot of sunlight streaming through a window onto a textured wall. Text: We often rush from one thing to the next, missing the divine appointments in the pauses. Embrace the stillness, for He is there.</p><p><strong>Slide 4: "His presence fills the silence."</strong><br>Visual: A simple, serene landscape (e.g., a misty morning field, or a calm lake). Text: You don't need grand gestures or loud declarations. His presence is in the gentle breeze, the quiet breath, the space between thoughts.</p><p><strong>Slide 5: "What stillness reveals."</strong><br>Visual: A hand gently holding a small, smooth stone. Text: In stillness, we find clarity, peace, and a deeper understanding of His unwavering love. It's where our souls are truly nourished.</p><p><strong>Slide 6: "Seek the stillness. Find Him there. #AestheticReflections #Stillness #GodIsInTheQuiet #ChristianLiving #BibiBello"</strong></p>` },
+                { day: 13, type: "Video", hook: "Bible Briefs Ep. 2: When God Says No. It's not rejection, it's redirection.", copy: `<p><strong>Creative Direction:</strong> Talking head, soft lighting, comforting tone. Bibi sits in a cozy, inviting space. Focus on empathy and reassurance when discussing difficult spiritual topics.</p><p><strong>Hook:</strong> "God said 'No.' It felt like the end. It was just the beginning. Let's talk about divine redirection."</p>` },
+                { day: 15, type: "Video", hook: "Gospel Cover: 'You Know My Name' - Raw vocal, pure worship.", copy: `<p><strong>Creative Direction:</strong> Calm, heartfelt worship cover. Bibi sings indoors with natural light (e.g., by a window). Simple mic setup, focus on raw vocal and emotional delivery. Minimalist background.</p><p><strong>Hook:</strong> "Lost? Remember this truth: He knows your name. A raw worship moment."</p>` },
+                { day: 17, type: "Carousel", hook: "Things I’ve Learned #2: Lessons I’ve Learned in Seasons of Silence", copy: `<p><strong>Slide 1: "Things I’ve Learned #2: Lessons I’ve Learned in Seasons of Silence"</strong><br>Visual: Minimalist text overlay on a serene image (e.g., a quiet forest path, or a single dewdrop on a leaf). Elegant serif font.</p><p><strong>Slide 2: "Silence is Not Absence."</strong><br>Visual: Empty chair in a peaceful setting. Text: When God feels silent, it doesn't mean He's absent. Often, it's in the quiet that we learn to truly listen, to discern His subtle movements.</p><p><strong>Slide 3: "Growth Happens in the Waiting."</strong><br>Visual: A seed sprouting. Text: Just like a seed grows in the darkness of the soil, our deepest spiritual growth often occurs in the unseen, silent seasons. Trust the process.</p><p><strong>Slide 4: "Dependence Deepens."</strong><br>Visual: Hands clasped, looking up. Text: When our usual comforts or answers are withheld, we're forced into deeper dependence on Him alone. This builds unwavering faith.</p><p><strong>Slide 5: "New Perspectives Emerge."</strong><br>Visual: A path opening up through mist. Text: Silence can strip away distractions, allowing us to see things from His divine perspective, revealing truths we missed in the noise.</p><p><strong>Slide 6: "His Faithfulness Remains."</strong><br>Visual: A steady, unchanging horizon. Text: Even when you can't hear Him, remember His character. He is faithful. His promises stand firm, regardless of the season.</p><p><strong>Slide 7: "Embrace the quiet. It's not a punishment, but an invitation to a deeper walk with Him. #SeasonsOfSilence #FaithJourney #ChristianWoman #SpiritualLessons #BibiBello"</strong></p>` },
+                { day: 20, type: "Video", hook: "OOTD + Bible Verse: Modesty meets modern faith. (Trending News: Christian women & fashion)", copy: `<p><strong>Creative Direction:</strong> Bibi showcases a simple, modest, yet stylish outfit for a specific occasion. She explains the outfit choices and connects it to a relevant Bible verse, possibly referencing a hypothetical trending discussion about modesty in modern Christian fashion. The tone should be empowering and authentic.</p><p><strong>Hook:</strong> "Christian fashion? Let's talk modesty, style, and 1 Timothy 2:9. My OOTD."</p>` },
+                { day: 22, type: "Carousel", hook: "Aesthetic Reflection #2: Her window light + handwritten prayer card", copy: `<p><strong>Slide 1: "Aesthetic Reflection #2: Her window light + handwritten prayer card"</strong><br>Visual: Beautiful, minimalist shot of Bibi's window space – soft natural light, a handwritten prayer card on a simple wooden sill, maybe a small, delicate plant. Elegant serif font.</p><p><strong>Slide 2: "Every sunrise, a new invitation to connect."</strong><br>Visual: Close-up of morning light on a wall. Text: The gentle morning light reminds us of His new mercies. It's a fresh start, a quiet moment to invite Him into your day.</p><p><strong>Slide 3: "Whispers of grace in simple notes."</strong><br>Visual: Close-up of the handwritten prayer card. Text: Sometimes, the deepest prayers aren't spoken aloud, but penned in quiet moments. A simple card, a profound conversation with God.</p><p><strong>Slide 4: "Finding sacred in the everyday."</strong><br>Visual: A serene shot of a simple, cozy corner of a room. Text: You don't need a grand cathedral to find Him. His presence fills your home, your quiet spaces, transforming the ordinary into the sacred.</p><p><strong>Slide 5: "His light, our guide."</strong><br>Visual: Sunlight creating soft shadows. Text: Just as the sun illuminates our path, His light guides our steps. Even in the shadows, His presence is a constant comfort.</p><p><strong>Slide 6: "What quiet moments do you cherish with God? Share below. #AestheticReflections #PrayerLife #MorningRoutine #ChristianLiving #BibiBello"</strong></p>` },
+                { day: 24, type: "Video", hook: "Bible Briefs Ep. 3: Faith When You’re Anxious. You're not alone.", copy: `<p><strong>Creative Direction:</strong> Talking head, very gentle and comforting tone. Bibi sits in a soft, inviting space, perhaps with a warm blanket or a cup of tea. Focus on empathy and reassurance.</p><p><strong>Hook:</strong> "Anxiety is real. Faith is stronger. Here's how to navigate both."</p>` },
+                { day: 27, type: "Video", hook: "Gospel Cover: 'Great Are You Lord' by All Sons & Daughters. A worship moment.", copy: `<p><strong>Creative Direction:</strong> Calm, heartfelt worship cover. Bibi sings in a minimalist, sunlit indoor setting, or a simple outdoor setting (e.g., by a tree). Focus on raw vocal and emotional delivery. Clean, inspiring aesthetic.</p><p><strong>Hook:</strong> "Declare His greatness with me. 'Great Are You Lord.' A pure worship moment."</p>` },
+                { day: 29, type: "Carousel", hook: "Things I’ve Learned #3: How I Keep My Faith in the Music Industry", copy: `<p><strong>Slide 1: "Things I’ve Learned #3: How I Keep My Faith in the Music Industry"</strong><br>Visual: Minimalist text overlay on an image related to music (e.g., a mic stand in soft focus, or sheet music with subtle light). Elegant serif font.</p><p><strong>Slide 2: "Anchor Yourself in the Word."</strong><br>Visual: Open Bible on a music stand. Text: The industry can be loud and distracting. My daily Bible time is non-negotiable. It's my compass, my truth, my constant in a shifting world.</p><p><strong>Slide 3: "Guard Your Heart & Your Circle."</strong><br>Visual: Hands forming a protective gesture, or a small, supportive group. Text: Be intentional about who you let speak into your life. Surround yourself with believers who uplift, challenge, and pray for you. Protect your peace.</p><p><strong>Slide 4: "Remember Your 'Why'."</strong><br>Visual: Bibi singing with passion, or a cross symbol. Text: When the pressures mount, or the comparisons start, I always go back to my 'why': to glorify God through my music, to share His message, to be a vessel. That keeps me grounded.</p><p><strong>Slide 5: "Practice Humility & Service."</strong><br>Visual: Bibi serving others, or a humble posture. Text: It's easy to get caught up in accolades. But true fulfillment comes from serving others and remembering that every gift is from Him, for His purpose.</p><p><strong>Slide 6: "Lean on His Strength, Not Your Own."</strong><br>Visual: A strong, steady hand. Text: The industry demands a lot. I've learned that my strength is limited, but His is infinite. When I feel overwhelmed, I surrender it to Him. His grace is sufficient.</p><p><strong>Slide 7: "My faith isn't just what I sing about; it's how I live. What challenges your faith, and how do you overcome them? #FaithInMusic #ChristianArtist #MusicIndustry #SpiritualResilience #BibiBello"</strong></p>` }
+            ];
+
+            const calendarGrid = document.getElementById('calendar-grid');
+            const typeFiltersContainer = document.getElementById('type-filters');
+            const pillarFiltersContainer = document.getElementById('pillar-filters');
+            const modal = document.getElementById('detail-modal');
+            const modalContent = document.getElementById('modal-content');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            
+            let currentFilter = { type: 'all', key: 'all' };
+
+            const typeIcons = {
+                'Video': '🎥', // For longer-form videos like Gospel Covers and Day in the Life
+                'Reel (Talking Head)': '🗣️', 
+                'Carousel': '🖼️',
+                'Single Design': '🎨',
+                'Reel (Motion Design)': '🎬' // Keeping this just in case, though less used for this brand
+            };
+
+            function createFilterButtons(container, filterKey, data) {
+                const categories = ['all', ...new Set(data.map(item => item[filterKey]))];
+                container.innerHTML = categories.map(cat => `
+                    <button data-filter="${cat}" data-key="${filterKey}" class="filter-btn border px-3 py-1 rounded-full text-sm font-medium hover:bg-sky-100 hover:border-sky-300 transition-colors ${cat === 'all' ? 'filter-btn-active' : ''}">
+                        ${cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </button>
+                `).join('');
+            }
+            
+            function renderCalendar() {
+                calendarGrid.innerHTML = '';
+                // Calendar starts on Tuesday, Day 1 (assuming first day of calendar is a Tuesday)
+                const firstDayContent = contentData.find(item => item.day === 1);
+                const firstDayOfWeek = 2; // Tuesday is the 2nd day of the week (0=Sun, 1=Mon, 2=Tue)
+                
+                for (let i = 0; i < firstDayOfWeek; i++) {
+                    calendarGrid.innerHTML += '<div class="bg-slate-900 rounded-lg"></div>'; // Empty slots for days before Day 1
+                }
+
+                for (let dayNum = 1; dayNum <= 30; dayNum++) {
+                    const item = contentData.find(d => d.day === dayNum);
+                    const dayElement = document.createElement('div');
+                    dayElement.className = `calendar-day relative border rounded-lg p-3 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-rose-400`;
+                    
+                    if (item) {
+                        dayElement.dataset.day = item.day;
+                        dayElement.dataset.type = item.type;
+                        dayElement.dataset.pillar = item.pillar;
+
+                        const dayMatchesFilter = (currentFilter.type === 'all' || item[currentFilter.key] === currentFilter.type);
+                        dayElement.style.opacity = dayMatchesFilter ? '1' : '0.4';
+
+                        dayElement.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-200">${item.day}</span>
+                                <span class="text-xl" title="${item.type}">${typeIcons[item.type] || '📄'}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2 font-medium">${item.hook}</p>
+                            <span class="text-xs text-rose-300 font-semibold bg-slate-700 px-2 py-0.5 rounded-full self-start mt-2">${item.pillar}</span>
+                        `;
+                        dayElement.addEventListener('click', () => showDetails(item.day));
+                    } else {
+                        // For days without content, make them visually distinct and non-interactive
+                        dayElement.classList.add('bg-slate-900', 'cursor-not-allowed', 'opacity-50');
+                        dayElement.innerHTML = `<span class="font-bold text-slate-600">${dayNum}</span>`;
+                    }
+                    calendarGrid.appendChild(dayElement);
+                }
+            }
+
+            function showDetails(day) {
+                const data = contentData.find(item => item.day === day);
+                if (!data) return;
+
+                document.getElementById('modal-day').textContent = `Day ${data.day} • ${data.pillar}`;
+                document.getElementById('modal-title').textContent = data.hook;
+                document.getElementById('modal-copy').innerHTML = data.copy; // Directly use innerHTML as content is pre-formatted
+                document.getElementById('modal-hashtags').textContent = data.hashtags;
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modalContent.classList.remove('scale-95');
+                }, 10);
+            }
+
+            function hideDetails() {
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            }
+
+            function applyFilter(key, type) {
+                currentFilter = { key, type };
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    if (btn.dataset.key === key) {
+                        if (btn.dataset.filter === type) {
+                            btn.classList.add('filter-btn-active');
+                        } else {
+                            btn.classList.remove('filter-btn-active');
+                        }
+                    } else {
+                        // Reset other filter group to 'all'
+                        if(btn.dataset.filter === 'all') {
+                           btn.classList.add('filter-btn-active');
+                        } else {
+                           btn.classList.remove('filter-btn-active');
+                        }
+                    }
+                });
+                renderCalendar();
+            }
+
+            // Chart rendering function (kept for structure, but hidden by CSS)
+            function renderTypeChart() {
+                const typeCounts = contentData.reduce((acc, item) => {
+                    const simpleType = item.type.split('(')[0].trim();
+                    acc[simpleType] = (acc[simpleType] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const ctx = document.getElementById('typeChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(typeCounts),
+                        datasets: [{
+                            data: Object.values(typeCounts),
+                            backgroundColor: ['#f472b6', '#fb7185', '#fda4af', '#fecdd3'], /* rose-400, rose-300, rose-200, rose-100 */
+                            borderColor: '#1e293b', /* slate-800 */
+                            borderWidth: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom', 
+                                labels: { 
+                                    boxWidth: 12, 
+                                    padding: 15, 
+                                    font: { size: 12 },
+                                    color: '#e2e8f0' /* slate-200 */
+                                } 
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+
+            document.getElementById('copy-hashtags-btn').addEventListener('click', () => {
+                const hashtags = document.getElementById('modal-hashtags').textContent;
+                document.execCommand('copy'); // Using execCommand for broader iframe compatibility
+                const feedback = document.getElementById('copy-feedback');
+                feedback.classList.add('opacity-100');
+                setTimeout(() => feedback.classList.remove('opacity-100'), 2000);
+            });
+
+            document.querySelectorAll('#type-filters, #pillar-filters').forEach(container => {
+                container.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('filter-btn')) {
+                        applyFilter(e.target.dataset.key, e.target.dataset.filter);
+                    }
+                });
+            });
+
+            closeModalBtn.addEventListener('click', hideDetails);
+            modal.addEventListener('click', (e) => e.target === modal && hideDetails());
+            
+            createFilterButtons(typeFiltersContainer, 'type', contentData);
+            createFilterButtons(pillarFiltersContainer, 'pillar', contentData);
+            renderCalendar();
+            // renderTypeChart(); // Chart is hidden by CSS, no need to render if not visible
+        });
+    </script>
+</body>
+</html>
